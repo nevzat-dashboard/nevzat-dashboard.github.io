@@ -481,8 +481,9 @@ const BUILTIN=new Set([TODO,...AREAS.map(a=>a.id)]);   // feste Bereiche (eigene
 const BRAIN=AREAS.find(a=>a.kind==='brain');
 const HABIT_AREA=AREAS.find(a=>a.habits);
 /* ===== Version & Änderungsliste (Schema: MAJOR.MINOR.PATCH – Major = Umbau, Minor = neues Feature/Modul, Patch = Korrektur/Kleinkram) ===== */
-const VERSION='1.9.0';
+const VERSION='1.9.1';
 const CHANGELOG=[
+  ['1.9.1','Sync zeigt jetzt die genaue Fehlerursache an, wenn der Google-Abgleich scheitert'],
   ['1.9.0','KI läuft jetzt über Google Gemini (kostenloser Schlüssel von aistudio.google.com) statt Claude: Coach und Tagebuch-Prüfung; Modellliste wird bei Bedarf automatisch von Google geholt'],
   ['1.8.0','Neuer Bereich Tagebuch: Einträge mit Datum und Titel, Suche, automatisches Speichern, Rechtschreibprüfung beim Tippen sowie KI-Prüfung (Korrigieren, Professionell umformulieren, Kürzer, Persönlicher) mit Vorschau, Übernehmen und Rückgängig'],
   ['1.7.2','Kacheln auf der Übersicht (Bereichs-Karten und Fortschrittsringe) lassen sich durch langes Drücken verschieben; Reihenfolge wird gespeichert und synchronisiert'],
@@ -2651,7 +2652,7 @@ async function syOne(p,startup){
     }
     if(act==='push'){ if(rem) syKeepOld(rem.data); await (c.mode==='api'?apiWrite(syPayload()):folderWrite(p,syPayload())); }
     c.last=lm; c.at=Date.now(); syCfgSave(); SY.st[p]='ok';
-  }catch(e){ SY.st[p]='err'; }
+  }catch(e){ SY.st[p]='err'; SY.errm=SY.errm||{}; SY.errm[p]=String(e&&e.message||e); }
 }
 async function syncRun(only,startup){
   clearTimeout(SY.timer); SY.timer=0;
@@ -2669,7 +2670,7 @@ function sySt(p){
   if(s==='run') return 'Gleiche ab …';
   if(s==='perm') return '⚠ Zugriff muss bestätigt werden – '+where+'.';
   if(s==='bad') return '⚠ Im Ordner liegt eine fremde Datei „'+SYFILE+'“. Es wurde nichts überschrieben.';
-  if(s==='err') return '⚠ Abgleich fehlgeschlagen – '+where+'.';
+  if(s==='err'){ const m=(SY.errm&&SY.errm[p])||''; const hint=/http403/.test(m)?' Google hat den Zugriff verweigert: Beim Anmelden das Häkchen für „App-Daten in Google Drive“ setzen (oder die Drive-API im Cloud-Projekt aktivieren).':/http401/.test(m)?' Anmeldung abgelaufen – bitte neu verbinden.':/Failed to fetch|NetworkError/i.test(m)?' Keine Verbindung zu Google.':''; return '⚠ Abgleich fehlgeschlagen – '+where+(m?' ('+esc(m)+')':'')+'.'+hint; }
   if(s==='wait') return 'Neuer Stand wartet – wird geladen, sobald du nichts bearbeitest.';
   const t=c.at?new Date(c.at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'noch nicht';
   return '✓ Verbunden ('+where+') · zuletzt '+t;
